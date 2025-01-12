@@ -1,51 +1,38 @@
-const renderApi = require('@api/render-api');
-const http =  require('http')
+require('dotenv').config();
 const express = require('express');
+const axios = require('axios');
 const app = express();
-const PORT = process.env.PORT || 7000; // Use process.env.PORT (default to 10000 if not set)
+const PORT = process.env.PORT || 7000;
+const RENDER_API_KEY = process.env.API_KEY; 
 
 
-
-
-
-// renderApi.listServices({includePreviews: 'true', limit: '20'})
-//   .then(({ data }) => console.log(data))
-//   .catch(err => console.error(err));
-
-
-  app.get('/', (req, res) => {
-    res.send('Hello, Node.js!');
-  });
-  
-// יצירת endpoint שמחזיר את רשימת השירותים
-renderApi.auth('rnd_r4og6UaKbyq4FvJyQc70B03Ip6BP');
+app.get('/', (req, res) => {
+    res.send('Hello from Render!');
+});
 
 app.get('/services', async (req, res) => {
     try {
-      // קריאה ל-API לקבלת רשימת השירותים
-      const { data } = await renderApi.listServices({
-        includePreviews: 'true',
-        limit: '20'
-      });
-  
-      // שליחת הרשימה כתגובה בפורמט JSON
-      res.status(200).json({
-        success: true,
-        services: data
-      });
-    } catch (err) {
-      // טיפול בשגיאות ושליחת הודעה מתאימה ללקוח
-      console.error(err);
-      res.status(500).json({
-        success: false,
-        message: 'Failed to fetch services',
-        error: err.message
-      });
+        if (!RENDER_API_KEY) {
+            throw new Error("RENDER_API_KEY is missing in .env file");
+        }
+        const response = await axios.get('https://api.render.com/v1/services', {
+            headers: {
+                Authorization: `Bearer ${RENDER_API_KEY}`
+            },
+        });
+        res.json(response.data);
+    } catch (error) {
+        console.error("Error details:", error); // הדפסת שגיאה מלאה עם פרטים
+        if (error.response) {
+            res.status(error.response.status).send(`Error fetching services: ${error.response.status} - ${error.response.data}`);
+        } else if (error.request) {
+            console.error("Request error:", error.request);
+            res.status(500).send('Error fetching services: No response from server');
+        } else {
+            console.error('Error message:', error.message);
+            res.status(500).send(`Error fetching services: ${error.message}`);
+        }
     }
-  });
-  
-  // הפעלת השרת
-  app.listen(PORT, () => {
-    console.log(`Server is running on http://localhost:${PORT}`);
-  });
-  
+});
+
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
